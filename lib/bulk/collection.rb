@@ -29,22 +29,41 @@ module Bulk
       @errors ||= Errors.new(self)
     end
 
-    def to_hash(name, options = {})
-      only_ids = options[:only_ids]
-      response = {}
+    def to_hash(name, opts = {})
+      only_ids = opts[:only_ids]
+
+      result = {}
+      records = []
 
       each do |id, record|
         next if errors.get(id)
-        response[name] ||= []
-        response[name] << (only_ids ? record.id : record.as_json(options[:as_json_options]) )
+
+        if only_ids
+          records << record.id
+        else
+          record_hash = record.as_json(opts[:as_json_options])
+
+          # TODO: Handle me on a per model basis and somewhere else.
+          if defined?(ActiveRecord)
+            if ActiveRecord::Base.include_root_in_json
+              record_hash = record_hash[record_hash.keys.first]
+            end
+          end
+
+          records << record_hash
+        end
       end
 
       errors.each do |id, error|
-        response[:errors] ||= {name => {}}
-        response[:errors][name][id] = error.to_hash
+        result[:errors] ||= {name => {}}
+        result[:errors][name][id] = error.to_hash
       end
 
-      response
+      result[name] = records
+
+      result
     end
+
   end
+
 end

@@ -1,7 +1,22 @@
-module Bulk
-  require 'bulk/collection'
-  require 'bulk/resource'
-  require 'bulk/engine'
+require 'active_support/dependencies/autoload'
 
-  require 'bulk/application'
+module Bulk
+  extend ActiveSupport::Autoload
+
+  autoload :AbstractCollection
+  autoload :Collection
+  autoload :Resource
+  autoload :Application
+  autoload :Request
+  autoload :QueryParser
+  autoload :Engine
+
+  MethodMap = {
+    :get    => :get,
+    :post   => :create,
+    :put    => :update,
+    :delete => :delete
+  }.freeze
 end
+
+require 'bulk/routes'

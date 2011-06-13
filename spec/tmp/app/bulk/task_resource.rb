@@ -1,2 +1,0 @@
-class TaskResource < ApplicationResource
-end
