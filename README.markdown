@@ -5,9 +5,11 @@ ready and it will probably take some API changes without deprecation
 warnings, so you should probably wait a bit if you want
 to use that.
 
-# Bulk Rails API
+# BulkApi
 
-Bulk Rails API plugin makes integrating Sproutcore applications with Rails applications dead simple. It handles all the communication and allows to take advantage of bulk operations, which can make your application much faster. To use that plugin you will also need BulkDataSource, which will handle Sproutcore side of communcation.
+`bulk\_api` makes integrating Sproutcore and Rails applications dead simple. It handles all the communication and allows to take advantage of bulk operations, which can make your application much faster. To use that plugin you will also need `BulkDataSource`, which will handle the Sproutcore side of things..
+
+The `bulk\_api` approach differs from REST APIs that you're probably used to; thus it needs to be handled differently. The goal is to cut the number of requests you need to do: It can handle many records (and many types of records) with one request. If you want to read more about how the API looks from the HTTP point of view, please refer to the "HTTP Api" section.
 
 ## Example
 
@@ -17,22 +19,21 @@ https://github.com/drnic/todos-bulk-api-demo
 
 After following this guide you will have a setup like this:
 
-  * `$RAILS_ROOT/app/sproutcore` is the path where your sproutcore application lives
+  * `$RAILS_ROOT/app/bulk` is the path where your resource definitions live
   * `/api/bulk` is routed to serve the API
-  * `/_sproutcore` is routed to serve your sproutcore application
 
 ### Rails
 
 Add this line to Gemfile and run bundle install:
 
 ```ruby
-gem 'bulk_api'
+gem 'bulk_api', :git => 'http://github.com/aflatter/bulk_api.git'
 ```
 
-To set up Bulk API in your Rails app:
+Add this line to your `routes.rb`:
 
-```
-rails generate bulk:install
+```ruby
+match '/bulk/api' => Bulk::Application
 ```
 
 ### Sproutcore
@@ -68,20 +69,9 @@ Todos.Todo = SC.Record.extend({
 Todos.Todo.resourceName = 'todo';
 ```
 
-## Usage
-
-By default Bulk Api plugin handles all of the models, in production you will probably want to filter it:
-
-```ruby
-# app/bulk/abstract_resource.rb
-class ApplicationResource < Bulk::Resource
-  resources :tasks, :projects
-end
-```
+## Customization
 
 If you don't have any specific needs like authentication or authorization, you're good to go with such simple configuration. In other cases you will need to do a bit more to integrate your application.
-
-Bulk API approach is a bit different than standard REST APIs that you're probably used to, thus it needs to be handled differently. The point of using bulk API is to cut the requests number - it can handle many records (and many types of records) with one request. If you want to read more about how the API looks from HTTP point of view, please scroll to "HTTP Api" section. For now let's focus on what you need to know to implement it in ruby.
 
 When using bulk api you can handle things on 3 levels:
 1) All records level
@@ -90,7 +80,6 @@ When using bulk api you can handle things on 3 levels:
 
 Let's see how to handle things on all of the 3 levels to add your own logic (like authentication or authorization).
 
-If some of your logic is common for all the record types, you can use ApplicationResource that lives in app/bulk/abstract_resource.rb. This is base class for all of the resources, just like ApplicationController is a base class for all of your controllers (this may not be true for some applications, but let's agree that's the most common scenario). To allow easy integration with application, you have access to several application objects in ApplicationResource and its subclasses:
 
 * session
 * controller
@@ -103,66 +92,57 @@ The methods used for records manipulation are:
 * update
 * delete
 
-### Authentication callbacks
 
-There are 3 kind of authorization callbacks that you can use. Each of them represents differnet level of handling records:
+### Control which resources are exposed
 
-* authenticate(action) - that callback is executed before handling the request, if it returns false, the entire response gets 401 status
-* authenticate_records(action, klass) - this callback is run before handling each type of resource, if it returns false, `not_authenticated` error is added to all of the records from given resource type. The class of the resource is passed as an argument.
-* authenticate_record(action, record) - this callback is run for each of the records, if it returns false, `not_authenticated` error is added to the given record
-
-Let's see example usage of each of this callbacks types:
+By default Bulk Api plugin handles all models. This is probably not what you want. Customization is done by subclassing `Bulk::Application`:
 
 ```ruby
-class ApplicationResource < Bulk::Resource
-  # delegate all the things that we need from controller
-  delegate current_user, :can?, :to => :controller
+# app/bulk/bulk_application.rb
+class BulkApplication < Bulk::Application
+  resources :tasks, :projects
+end
 
-  def authenticate(action)
-    current_user.logged_in?
-  end
+# config/routes.rb
+match '/bulk/api' => BulkApplication
+```
 
-  def authenticate_records(action, klass)
-  end
+Because `bulk\_api` is built on Rack, you can use other middleware to alter its behaviour.
 
-  def authenticate_record(action, record)
+### Authentication
+
+```ruby
+# app/bulk/bulk_application.rb
+class BulkApplication < Bulk::Application
+  def before_request(request)
+    request.env['warden'].authenticate
   end
 end
 ```
 
-### Authorization callbacks
+### Authorization
 
-Authorization callbacks are very similar to authentication
-callbacks. Notice that authorization callbacks will only be run when
-authentication callback succeeds.
+If some of your logic is common for all resources, you can define an `ApplicationResource`. This class is used if you do not implement a more specific resource.  Just like `ApplicationController` in rails, you can use that as a base class for all of your resources. 
 
-* authorize(action) - that callback is executed before handling the request, if it returns false, the entire response gets 403 status
-* authorize_records(action, klass) - this callback is run before handling each type of resource, if it returns false, 403 error is added to all of the records from given resource type. The class of the resource is passed as an argument.
-* authorize_record(action, record) - this callback is run for each of the records, if it returns false, 403 error is added to the given record
+There are 2 different authorization callbacks that you can use:
 
-Let's see example usage of each of this callbacks types.
+* `authorize\_records(action, model\_class)` - this callback is run before handling each type of resource, if it returns false, a `forbidden`` error is added to all of the records.
+* `authorize_record(action, record)` - this callback is run for each of the records. If it returns false, a `forbidden` error is added to the given record.
 
 ```ruby
+# app/bulk/application_resource.rb
 class ApplicationResource < Bulk::Resource
-  # delegate all the things that we need from controller
-  delegate current_user, :can?, :to => :controller
 
-  def authorize(action)
-    current_user.is_admin?
+  # Allow only get requests and only for the tasks resource:
+  def authorize_records(action, model_class)
+    model_class == Task && action == :get
   end
 
-  def authorize_records(action, klass)
-    # klass can be for example Project
-    if action == :update
-      can? :update, klass
-    end
-  end
-
+  # Check if the record belongs to the user
   def authorize_record(action, record)
-    can? action, record # action returns one of the 4 actions (get, create, update, delete),
-                        # so this will check if user can perform given type of action on
-                        # the record
+    request.env['current_user'].id == record.user_id
   end
+
 end
 ```
 
@@ -221,7 +201,7 @@ end
 
 You can also override that method in individual resource classes.
 
-### Specific resource classes
+### Implementing resources 
 
 Sometimes you may want to implement specific application logic to one of the resources. Or you don't want to end up with Switch Driven Development in one of you authenticate callbacs. In such cases, the easiest way to handle resource specific code is to create an ApplicationResouce subclass that you can use to override standard behavior. There is a generator to make things easy for you:
 
