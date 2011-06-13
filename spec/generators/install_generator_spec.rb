@@ -19,17 +19,18 @@ describe 'Install generator' do
 
     destination_root.should have_structure {
       file "config/routes.rb" do
-        contains 'bulk_routes "/api/bulk"'
-        contains 'mount Bulk::Sproutcore.new => "/_sproutcore"'
+        contains 'match "/api/bulk" => BulkApplication'
+      end
+
+      file "app/bulk/bulk_application.rb" do
+        contains "class BulkApplication < Bulk::Application"
+        contains "# resources :tasks, :projects"
       end
 
       file "app/bulk/application_resource.rb" do
         contains "class ApplicationResource < Bulk::Resource"
-        contains "# resources :tasks, :projects"
-      end
-
-      file "config/initializers/bulk_api.rb" do
-        contains "# Bulk::Resource.application_resource_class = :ApplicationResource"
+        contains "# def authorize_records(action, model_class)"
+        contains "# def authorize_record(action, record)"
       end
     }
   end

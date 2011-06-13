@@ -1,9 +1,10 @@
 class ApplicationResource < Bulk::Resource
-  # In production you should filter resources that you want to handle.
-  # To do so, just uncomment the next line and set resources that should be
-  # available in Bulk API:
+
+  # def authorize_records(action, model_class)
+  # end
   #
-  # resources :tasks, :projects
+  # def authorize_record(action, record)
+  # end
 
 end
 
