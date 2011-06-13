@@ -33,7 +33,7 @@ gem 'bulk_api', :git => 'http://github.com/aflatter/bulk_api.git'
 Add this line to your `routes.rb`:
 
 ```ruby
-match '/bulk/api' => Bulk::Application
+match '/bulk/api' => Bulk::Application.new
 ```
 
 ### Sproutcore
