@@ -7,9 +7,9 @@ to use that.
 
 # BulkApi
 
-`bulk\_api` makes integrating Sproutcore and Rails applications dead simple. It handles all the communication and allows to take advantage of bulk operations, which can make your application much faster. To use that plugin you will also need `BulkDataSource`, which will handle the Sproutcore side of things..
+`bulk_api` makes integrating Sproutcore and Rails applications dead simple. It handles all the communication and allows to take advantage of bulk operations, which can make your application much faster. To use that plugin you will also need `BulkDataSource`, which will handle the Sproutcore side of things..
 
-The `bulk\_api` approach differs from REST APIs that you're probably used to; thus it needs to be handled differently. The goal is to cut the number of requests you need to do: It can handle many records (and many types of records) with one request. If you want to read more about how the API looks from the HTTP point of view, please refer to the "HTTP Api" section.
+The `bulk_api` approach differs from REST APIs that you're probably used to; thus it needs to be handled differently. The goal is to cut the number of requests you need to do: It can handle many records (and many types of records) with one request. If you want to read more about how the API looks from the HTTP point of view, please refer to the "HTTP Api" section.
 
 ## Example
 
@@ -74,16 +74,12 @@ Todos.Todo.resourceName = 'todo';
 If you don't have any specific needs like authentication or authorization, you're good to go with such simple configuration. In other cases you will need to do a bit more to integrate your application.
 
 When using bulk api you can handle things on 3 levels:
-1) All records level
-2) Particular record type level
-3) Individual record level
+
+1) All requests
+2) Particular record type
+3) Individual record
 
 Let's see how to handle things on all of the 3 levels to add your own logic (like authentication or authorization).
-
-
-* session
-* controller
-* params
 
 The methods used for records manipulation are:
 
@@ -91,7 +87,6 @@ The methods used for records manipulation are:
 * create
 * update
 * delete
-
 
 ### Control which resources are exposed
 
@@ -107,7 +102,7 @@ end
 match '/bulk/api' => BulkApplication
 ```
 
-Because `bulk\_api` is built on Rack, you can use other middleware to alter its behaviour.
+Because `bulk_api` is built on Rack, you can use other middleware to alter its behaviour.
 
 ### Authentication
 
@@ -126,7 +121,7 @@ If some of your logic is common for all resources, you can define an `Applicatio
 
 There are 2 different authorization callbacks that you can use:
 
-* `authorize\_records(action, model\_class)` - this callback is run before handling each type of resource, if it returns false, a `forbidden`` error is added to all of the records.
+* `authorize_records(action, model_class)` - this callback is run before handling each type of resource, if it returns false, a `forbidden`` error is added to all of the records.
 * `authorize_record(action, record)` - this callback is run for each of the records. If it returns false, a `forbidden` error is added to the given record.
 
 ```ruby
@@ -283,17 +278,6 @@ collection.errors.set(1, :access_denied) # add error that will be passed to Data
                                          # notice that these errors are not the same as validation errors,
                                          # this is more general way to tell DataSource what's going on
 collection.delete(1, record) # remove the record
-```
-
-### Advanced usage
-
-If you want to change class or resource name that will be send, you can use resource_class and resource_name methods:
-
-```ruby
-class TaskResource < Sproutcore::Resource
-  resource_class Todo
-  resource_name 'todo'
-end
 ```
 
 ## Http Bulk API
