@@ -18,5 +18,3 @@ module Bulk
     :delete => :delete
   }.freeze
 end
-
-require 'bulk/routes'
