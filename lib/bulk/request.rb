@@ -13,6 +13,8 @@ module Bulk
     def initialize(app, env)
       super(env)
       @app = app
+
+      decode_body(env)
     end
 
     # Overridden to use hash with indifferent access.
@@ -34,6 +36,21 @@ module Bulk
     def action
       method = request_method.downcase.to_sym
       MethodMap[method]
+    end
+
+    protected
+
+    # Decodes the request body using JSON and updates `env`.
+    def decode_body(env)
+      return unless media_type == 'application/json'
+
+      body = env['rack.input'].read
+      return unless body.length > 0
+
+      env.update(
+        'rack.request.form_hash'  => JSON.parse(body),
+        'rack.request.form_input' => env['rack.input']
+      )
     end
 
   end # Request
